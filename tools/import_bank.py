@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-"""Import bazy pytań z pliku XLSX do formatu resources aplikacji.
+"""Imports a question bank from an XLSX file into the app's resources format.
 
-Tworzy/aktualizuje:
-  resources/<bank>/questions.json  - treść pytań (PL/EN/DE), odpowiedzi, media
-  resources/<bank>/media/          - obrazy (kopiowane) i filmy (konwertowane WMV -> MP4)
-  resources/banks.json             - rejestr dostępnych baz pytań
+Creates/updates:
+  resources/<bank>/questions.json  - question text (PL/EN/DE), answers, media
+  resources/<bank>/media/          - images (copied) and videos (converted WMV -> MP4)
+  resources/banks.json             - registry of available question banks
 
-Skrypt korzysta wyłącznie z biblioteki standardowej Pythona. Do konwersji filmów
-potrzebny jest ffmpeg (w PATH lub wskazany przez --ffmpeg). Bez ffmpeg pytania
-są importowane, a filmy oznaczane jako brakujące - wystarczy uruchomić skrypt
-ponownie po zainstalowaniu ffmpeg.
+The script uses only the Python standard library. Video conversion requires ffmpeg
+(on PATH or given with --ffmpeg). Without ffmpeg the questions are imported and the
+videos marked as missing - just run the script again after installing ffmpeg.
 
-Ponowny import nie nadpisuje ręcznie ustawionych pól mediów (startAt) ani pytań
-dodanych ręcznie do questions.json (pytania bez odpowiednika w XLSX zostają).
+Re-importing keeps manually set media fields (startAt) and questions added manually
+to questions.json (questions with no counterpart in the XLSX are kept).
 
-Przykład:
+Example:
   python tools/import_bank.py --xlsx BAZA.xlsx --media-src katA --category A \\
       --bank katA --name-pl "Kategoria A" --name-en "Category A" --name-de "Klasse A"
 """
@@ -36,7 +35,7 @@ VIDEO_EXT = {".wmv", ".avi", ".mpg", ".mpeg", ".mov", ".mkv", ".flv", ".mp4", ".
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 LANGS = ("pl", "en", "de")
 
-# Kolumny arkusza (nagłówki z oficjalnej bazy pytań)
+# Sheet columns (headers from the official question bank)
 COL = {
     "id": "Numer pytania",
     "text_pl": "Pytanie", "a_pl": "Odpowiedź A", "b_pl": "Odpowiedź B", "c_pl": "Odpowiedź C",
@@ -48,7 +47,7 @@ COL = {
 
 
 def read_xlsx(path):
-    """Zwraca wiersze pierwszego arkusza jako listę słowników {nagłówek: wartość}."""
+    """Returns the rows of the first sheet as a list of {header: value} dicts."""
     z = zipfile.ZipFile(path)
     shared = []
     if "xl/sharedStrings.xml" in z.namelist():
@@ -119,13 +118,13 @@ def build_question(row):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--xlsx", required=True, help="plik XLSX z bazą pytań")
-    ap.add_argument("--media-src", required=True, help="katalog z oryginalnymi materiałami multimedialnymi")
-    ap.add_argument("--category", required=True, help="kategoria prawa jazdy do zaimportowania, np. A")
-    ap.add_argument("--bank", required=True, help="identyfikator bazy (nazwa katalogu w resources), np. katA")
+    ap.add_argument("--xlsx", required=True, help="XLSX file with the question bank")
+    ap.add_argument("--media-src", required=True, help="directory with the original media files")
+    ap.add_argument("--category", required=True, help="driving licence category to import, e.g. A")
+    ap.add_argument("--bank", required=True, help="bank id (directory name in resources), e.g. katA")
     ap.add_argument("--name-pl"), ap.add_argument("--name-en"), ap.add_argument("--name-de")
-    ap.add_argument("--ffmpeg", help="ścieżka do ffmpeg (domyślnie z PATH)")
-    ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1), help="równoległe konwersje")
+    ap.add_argument("--ffmpeg", help="path to ffmpeg (default: from PATH)")
+    ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1), help="parallel conversions")
     args = ap.parse_args()
 
     bank_dir = os.path.join(RESOURCES, args.bank)
@@ -141,7 +140,7 @@ def main():
     src_files = {f.lower(): f for f in os.listdir(args.media_src)}
     ffmpeg = find_ffmpeg(args.ffmpeg)
     if not ffmpeg:
-        print("UWAGA: nie znaleziono ffmpeg - filmy nie zostaną skonwertowane (oznaczone jako brakujące).")
+        print("WARNING: ffmpeg not found - videos will not be converted (marked as missing).")
 
     rows = [r for r in read_xlsx(args.xlsx) if args.category in r[COL["categories"]].split(",")]
     questions, conversions, missing = [], {}, []
@@ -175,7 +174,7 @@ def main():
         questions.append(q)
 
     if conversions:
-        print(f"Konwersja {len(conversions)} filmów do MP4 ({args.jobs} równolegle)...")
+        print(f"Converting {len(conversions)} videos to MP4 ({args.jobs} in parallel)...")
         done = 0
         with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
             futures = {pool.submit(convert_video, ffmpeg, src, dst): (dst, m) for dst, (src, m) in conversions.items()}
@@ -185,11 +184,11 @@ def main():
                 done += 1
                 if err:
                     media["missing"] = True
-                    print(f"  BŁĄD {os.path.basename(dst)}: {err}")
+                    print(f"  ERROR {os.path.basename(dst)}: {err}")
                 if done % 25 == 0 or done == len(conversions):
                     print(f"  {done}/{len(conversions)}")
 
-    # pytania dodane ręcznie (spoza XLSX) zostają w bazie
+    # questions added manually (not in the XLSX) stay in the bank
     imported = {q["id"] for q in questions}
     questions += [q for qid, q in previous.items() if qid not in imported]
 
@@ -209,13 +208,13 @@ def main():
         json.dump(banks, f, ensure_ascii=False, indent=2)
 
     n_missing = sum(1 for q in questions if (q.get("media") or {}).get("missing"))
-    print(f"Zapisano {len(questions)} pytań do {os.path.relpath(qpath, ROOT)}")
-    print(f"Pytania z brakującymi mediami: {n_missing} (brak w katalogu źródłowym: {len(missing)})")
+    print(f"Saved {len(questions)} questions to {os.path.relpath(qpath, ROOT)}")
+    print(f"Questions with missing media: {n_missing} (not found in source directory: {len(missing)})")
     if missing:
         report = os.path.join(bank_dir, "missing_media.txt")
         with open(report, "w", encoding="utf-8") as f:
             f.writelines(f"{qid}\t{name}\n" for qid, name in missing)
-        print(f"Lista brakujących plików: {os.path.relpath(report, ROOT)}")
+        print(f"List of missing files: {os.path.relpath(report, ROOT)}")
 
 
 if __name__ == "__main__":

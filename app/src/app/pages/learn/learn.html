@@ -1,0 +1,99 @@
+@let f = filters();
+<main class="learn">
+  <aside class="filters card">
+    <h3>{{ i18n.t('filters') }}</h3>
+    <label>
+      {{ i18n.t('scope') }}
+      <select (change)="setFilter('scope', $any($event.target).value)">
+        <option value="all" [selected]="f.scope === 'all'">{{ i18n.t('all') }}</option>
+        <option value="basic" [selected]="f.scope === 'basic'">{{ i18n.t('basic') }}</option>
+        <option value="specialist" [selected]="f.scope === 'specialist'">{{ i18n.t('specialist') }}</option>
+      </select>
+    </label>
+    <label>
+      {{ i18n.t('block') }}
+      <select (change)="setFilter('block', $any($event.target).value)">
+        <option value="all" [selected]="f.block === 'all'">{{ i18n.t('all') }}</option>
+        @for (b of blocks(); track b) {
+          <option [value]="b" [selected]="f.block === b">{{ b }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      {{ i18n.t('status') }}
+      <select (change)="setFilter('status', $any($event.target).value)">
+        <option value="all" [selected]="f.status === 'all'">{{ i18n.t('all') }}</option>
+        <option value="new" [selected]="f.status === 'new'">{{ i18n.t('statusNew') }}</option>
+        <option value="wrong" [selected]="f.status === 'wrong'">{{ i18n.t('statusWrong') }}</option>
+        <option value="correct" [selected]="f.status === 'correct'">{{ i18n.t('statusCorrect') }}</option>
+      </select>
+    </label>
+    <label>
+      {{ i18n.t('order') }}
+      <select (change)="setFilter('order', $any($event.target).value)">
+        <option value="seq" [selected]="f.order === 'seq'">{{ i18n.t('orderSeq') }}</option>
+        <option value="random" [selected]="f.order === 'random'">{{ i18n.t('orderRandom') }}</option>
+      </select>
+    </label>
+    <label>
+      {{ i18n.t('search') }}
+      <input type="search" [value]="f.search" (input)="setFilter('search', $any($event.target).value)" />
+    </label>
+    <p class="muted small">{{ i18n.t('keyboardHint') }}</p>
+  </aside>
+
+  <section class="learn-main">
+    @if (current(); as q) {
+      <div class="card question-card">
+        <div class="q-meta">
+          <span>{{ i18n.t('question') }} {{ index() + 1 }} {{ i18n.t('of') }} {{ list().length }}</span>
+          <span class="tag">#{{ q.id }}</span>
+          <span class="tag">{{ q.scope === 'basic' ? i18n.t('basic') : i18n.t('specialist') }}</span>
+          <span class="tag">{{ i18n.t('block') }} {{ q.block }}</span>
+          <span class="tag">{{ i18n.t('points') }}: {{ q.points }}</span>
+          @if (currentProgress(); as p) {
+            <span class="tag" [class.good]="p.last" [class.bad]="!p.last">✔ {{ p.c }} · ✘ {{ p.w }}</span>
+          }
+        </div>
+
+        @for (mq of [q]; track mq.id) {
+          <app-question-media [question]="mq" [controls]="true" />
+        }
+        <div class="media-tools">
+          @if (hasVideo(q)) {
+            <button class="btn small" (click)="replay()">▶ {{ i18n.t('replay') }}</button>
+            @if (q.media?.startAt) {
+              <span class="muted small">start: {{ q.media?.startAt }}{{ i18n.t('sec') }}</span>
+            }
+          }
+        </div>
+
+        <h2 class="q-text">{{ i18n.tr(q.text) }}</h2>
+        <div class="answers" [class]="q.type">
+          @for (o of i18n.answerOptions(q); track o.key) {
+            <button class="answer" [class]="answerClass(o.key)" [disabled]="!!answered()" (click)="answer(o.key)">
+              {{ o.label }}
+            </button>
+          }
+        </div>
+        <div class="feedback">
+          @if (answered(); as a) {
+            @if (a === q.correct) {
+              <div class="ok">✔ {{ i18n.t('correct') }}</div>
+            } @else {
+              <div class="err">✘ {{ i18n.t('wrong') }} <b>{{ i18n.answerLabel(q, q.correct) }}</b></div>
+            }
+          }
+        </div>
+        <div class="row nav">
+          <button class="btn" id="prev" [disabled]="index() === 0" (click)="go(-1)">← {{ i18n.t('prev') }}</button>
+          <button class="btn primary" id="next" [disabled]="index() >= list().length - 1" (click)="go(1)">
+            {{ i18n.t('next') }} →
+          </button>
+        </div>
+      </div>
+    } @else {
+      <div class="card empty">{{ i18n.t('noResults') }}</div>
+    }
+  </section>
+</main>

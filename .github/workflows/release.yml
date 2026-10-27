@@ -1,0 +1,134 @@
+# Builds ready-to-run packages (Windows, Linux, macOS) and publishes them in a GitHub Release.
+# A package needs neither Python nor Node.js: it contains the built Angular app, resources/
+# and a standalone server executable (tools/serve.py bundled by PyInstaller).
+#
+# Release:      git tag v1.0.0 && git push origin v1.0.0
+# Manual run:   Actions -> Release -> Run workflow (enter an existing or new tag)
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. v1.0.0 (created on the selected branch if it does not exist)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  web:
+    name: Build Angular app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+      - run: npm run build
+        working-directory: app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: app/dist/driving-exam-trainer/browser
+          retention-days: 1
+
+  server:
+    name: Build server (${{ matrix.os }})
+    strategy:
+      matrix:
+        include:
+          - os: windows
+            runner: windows-latest
+          - os: linux
+            runner: ubuntu-22.04 # older glibc - the binary runs on more distributions
+          - os: macos
+            runner: macos-latest # Apple Silicon (arm64)
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyinstaller
+      - run: pyinstaller --onefile --name driving-exam-trainer tools/serve.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.os }}
+          path: dist/driving-exam-trainer*
+          retention-days: 1
+
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create the release if it does not exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "$TAG" --notes "Download the package for your system, unpack it and run driving-exam-trainer (driving-exam-trainer.exe on Windows)."
+
+  package:
+    name: Package (${{ matrix.os }})
+    needs: [web, server, release]
+    strategy:
+      matrix:
+        os: [windows, linux, macos]
+    runs-on: ubuntu-latest
+    steps:
+      # resources/ (questions and ~1.4 GB of media) are the only part of the repository needed here
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: resources
+      - uses: actions/download-artifact@v4
+        with:
+          name: web
+          path: pkg/app
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-${{ matrix.os }}
+          path: pkg
+      - name: Assemble package
+        run: |
+          mv resources pkg/resources
+          rm -f pkg/resources/*/missing_media.txt
+          chmod +x pkg/driving-exam-trainer* # artifacts do not preserve file permissions
+          cat > pkg/README.txt <<'EOF'
+          Driving licence theory test - category A
+
+          Windows: run driving-exam-trainer.exe
+          Linux:   run ./driving-exam-trainer
+          macOS:   run ./driving-exam-trainer (on first launch macOS may block the unsigned file -
+                   run: xattr -d com.apple.quarantine driving-exam-trainer)
+
+          The app opens in the browser at http://localhost:8000 (or the next free port).
+          Close the console window (or press Ctrl+C) to stop it.
+          EOF
+          name="driving-exam-trainer-$TAG-${{ matrix.os }}"
+          mv pkg "$name"
+          if [ "${{ matrix.os }}" = windows ]; then
+            zip -qr -0 "$name.zip" "$name" # media are already compressed
+            echo "ASSET=$name.zip" >> "$GITHUB_ENV"
+          else
+            tar -cf "$name.tar" "$name" # tar keeps the executable bit
+            echo "ASSET=$name.tar" >> "$GITHUB_ENV"
+          fi
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" "$ASSET" --clobber --repo "$GITHUB_REPOSITORY"

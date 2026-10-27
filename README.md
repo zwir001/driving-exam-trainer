@@ -1,15 +1,40 @@
 # Egzamin teoretyczny – prawo jazdy (kat. A)
 
-Aplikacja webowa (czysty HTML/CSS/JS, bez kompilacji) do nauki pytań i próbnych egzaminów
-w formie zbliżonej do egzaminu państwowego. Języki: polski, angielski, niemiecki.
+Aplikacja Angular (katalog `app/`) do nauki pytań i próbnych egzaminów w formie zbliżonej
+do egzaminu państwowego. Języki: polski, angielski, niemiecki.
 
 ## Uruchomienie
 
 ```
-python tools/serve.py        # albo dwuklik na start.bat (Windows)
+./start.sh                   # WSL/Linux: buduje aplikację przy pierwszym uruchomieniu i startuje serwer
+start.bat                    # Windows: wymaga wcześniej zbudowanej aplikacji (app/dist)
 ```
-Otwórz http://localhost:8000. Aplikacja musi działać przez serwer HTTP (nie przez `file://`);
-dołączony serwer obsługuje żądania Range, potrzebne do przewijania filmów.
+Otwórz http://localhost:8000. `tools/serve.py` serwuje zbudowaną aplikację (`app/dist/driving-exam-trainer/browser`)
+i katalog `resources/`, obsługuje żądania Range (przewijanie filmów) oraz trasy aplikacji (`/learn` itd.).
+
+## Paczki do pobrania (bez Pythona i Node.js)
+
+Workflow `.github/workflows/release.yml` po wypchnięciu tagu `v*` (np. `git tag v1.0.0 && git push origin v1.0.0`)
+albo ręcznie z zakładki Actions buduje paczki dla Windows (`.zip`), Linuksa i macOS (`.tar`) i dodaje je do
+GitHub Release. Paczka zawiera zbudowaną aplikację, `resources/` oraz plik wykonywalny `driving-exam-trainer`/`driving-exam-trainer.exe`
+(`tools/serve.py` spakowany przez PyInstaller) — wystarczy rozpakować i uruchomić.
+
+## Praca nad kodem
+
+Wymaga Node.js ≥ 22.22 (np. przez nvm). W katalogu `app/`:
+```
+npm install
+npm run resources            # terminal 1: serwer resources/ na porcie 8000
+npm start                    # terminal 2: ng serve na http://localhost:4200 (proxy /resources -> :8000)
+npm run build                # wersja produkcyjna do app/dist/
+```
+
+Struktura `app/src/app/`:
+- `core/` – modele, tłumaczenia interfejsu (`translations.ts`), serwisy: `BankService` (bazy pytań),
+  `ProgressService` (postęp nauki w localStorage), `ExamService` (losowanie, punktacja, zasady `EXAM_RULES`),
+  `I18nService` (język),
+- `shared/question-media.ts` – obraz/film pytania z przyciskiem START i obsługą `startAt`,
+- `pages/` – `home`, `learn`, `exam`, `result`.
 
 ## Filmy (WMV → MP4)
 
@@ -53,4 +78,4 @@ usuwane przy ponownym imporcie) i dokładając pliki do `media/`.
 32 pytania: 20 podstawowych (10×3, 6×2, 4×1 pkt) i 12 specjalistycznych (6×3, 4×2, 2×1 pkt),
 maks. 74 pkt, zaliczenie od 68 pkt, 25 minut. Pytania podstawowe: 20 s na zapoznanie się,
 START uruchamia film (odtwarzany raz), potem 15 s na odpowiedź. Pytania specjalistyczne: 50 s.
-Bez możliwości powrotu do poprzedniego pytania. Parametry są w `EXAM` w `js/app.js`.
+Bez możliwości powrotu do poprzedniego pytania. Parametry są w `EXAM_RULES` w `app/src/app/core/exam.service.ts`.
