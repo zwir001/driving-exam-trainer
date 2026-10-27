@@ -1,0 +1,13 @@
+{
+  "banks": [
+    {
+      "id": "katA",
+      "name": {
+        "pl": "Kategoria A",
+        "en": "Category A",
+        "de": "Klasse A"
+      },
+      "path": "katA/questions.json"
+    }
+  ]
+}
