@@ -3,7 +3,41 @@
 Aplikacja Angular (katalog `app/`) do nauki pytań i próbnych egzaminów w formie zbliżonej
 do egzaminu państwowego. Języki: polski, angielski, niemiecki.
 
-## Uruchomienie
+## Uruchomienie z gotowej paczki (bez instalacji Pythona i Node.js)
+
+1. Otwórz zakładkę **Releases** repozytorium na GitHubie i pobierz z najnowszego wydania paczkę dla swojego systemu
+   (ok. 1,4 GB):
+
+   | System | Plik |
+   |---|---|
+   | Windows | `driving-exam-trainer-<wersja>-windows.zip` |
+   | Linux | `driving-exam-trainer-<wersja>-linux.tar` |
+   | macOS (Apple Silicon) | `driving-exam-trainer-<wersja>-macos.tar` |
+
+2. Rozpakuj paczkę i uruchom aplikację:
+   - **Windows** – rozpakuj archiwum (Wyodrębnij wszystkie…) i kliknij dwukrotnie `driving-exam-trainer.exe`.
+     Jeśli pojawi się ostrzeżenie SmartScreen, wybierz „Więcej informacji” → „Uruchom mimo to”.
+   - **Linux**
+     ```
+     tar -xf driving-exam-trainer-<wersja>-linux.tar
+     cd driving-exam-trainer-<wersja>-linux
+     ./driving-exam-trainer
+     ```
+   - **macOS**
+     ```
+     tar -xf driving-exam-trainer-<wersja>-macos.tar
+     cd driving-exam-trainer-<wersja>-macos
+     xattr -d com.apple.quarantine driving-exam-trainer   # plik nie jest podpisany - odblokowanie przy pierwszym uruchomieniu
+     ./driving-exam-trainer
+     ```
+
+3. Aplikacja otworzy się w przeglądarce pod adresem http://localhost:8000 (jeśli port jest zajęty – pod kolejnym
+   wolnym, adres widać w oknie konsoli). Aby ją zamknąć, zamknij okno konsoli albo naciśnij Ctrl+C.
+
+Pliki `driving-exam-trainer(.exe)`, `app/` i `resources/` muszą pozostać obok siebie w jednym katalogu.
+Inny port można podać jako argument, np. `driving-exam-trainer 8080`; `--no-browser` nie otwiera przeglądarki.
+
+## Uruchomienie z kodu źródłowego
 
 ```
 ./start.sh                   # WSL/Linux: buduje aplikację przy pierwszym uruchomieniu i startuje serwer
@@ -12,12 +46,12 @@ start.bat                    # Windows: wymaga wcześniej zbudowanej aplikacji (
 Otwórz http://localhost:8000. `tools/serve.py` serwuje zbudowaną aplikację (`app/dist/driving-exam-trainer/browser`)
 i katalog `resources/`, obsługuje żądania Range (przewijanie filmów) oraz trasy aplikacji (`/learn` itd.).
 
-## Paczki do pobrania (bez Pythona i Node.js)
+## Tworzenie paczek (GitHub Actions)
 
 Workflow `.github/workflows/release.yml` po wypchnięciu tagu `v*` (np. `git tag v1.0.0 && git push origin v1.0.0`)
 albo ręcznie z zakładki Actions buduje paczki dla Windows (`.zip`), Linuksa i macOS (`.tar`) i dodaje je do
 GitHub Release. Paczka zawiera zbudowaną aplikację, `resources/` oraz plik wykonywalny `driving-exam-trainer`/`driving-exam-trainer.exe`
-(`tools/serve.py` spakowany przez PyInstaller) — wystarczy rozpakować i uruchomić.
+(`tools/serve.py` spakowany przez PyInstaller).
 
 ## Praca nad kodem
 
