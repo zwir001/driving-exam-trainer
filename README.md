@@ -12,6 +12,13 @@ start.bat                    # Windows: wymaga wcześniej zbudowanej aplikacji (
 Otwórz http://localhost:8000. `tools/serve.py` serwuje zbudowaną aplikację (`app/dist/prawko/browser`)
 i katalog `resources/`, obsługuje żądania Range (przewijanie filmów) oraz trasy aplikacji (`/learn` itd.).
 
+## Paczki do pobrania (bez Pythona i Node.js)
+
+Workflow `.github/workflows/release.yml` po wypchnięciu tagu `v*` (np. `git tag v1.0.0 && git push origin v1.0.0`)
+albo ręcznie z zakładki Actions buduje paczki dla Windows (`.zip`), Linuksa i macOS (`.tar`) i dodaje je do
+GitHub Release. Paczka zawiera zbudowaną aplikację, `resources/` oraz plik wykonywalny `prawko`/`prawko.exe`
+(`tools/serve.py` spakowany przez PyInstaller) — wystarczy rozpakować i uruchomić.
+
 ## Praca nad kodem
 
 Wymaga Node.js ≥ 22.22 (np. przez nvm). W katalogu `app/`:

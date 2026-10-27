@@ -5,6 +5,9 @@ Serves app/dist/prawko/browser (output of `npm run build` in app/) and the resou
 under /resources/. Unknown paths return index.html (app routing).
 
 Usage:  python tools/serve.py [port] [--no-browser]   ->  http://localhost:8000
+
+Release packages contain this script bundled by PyInstaller into a standalone executable
+(no Python needed) placed next to the app/ (built app) and resources/ directories.
 """
 import http.server
 import os
@@ -12,15 +15,22 @@ import re
 import sys
 import webbrowser
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DIST = os.path.join(ROOT, "app", "dist", "prawko", "browser")
+if getattr(sys, "frozen", False):
+    # standalone executable from a release package: app/ and resources/ lie next to it
+    ROOT = os.path.dirname(os.path.abspath(sys.executable))
+    DIST = os.path.join(ROOT, "app")
+else:
+    ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    DIST = os.path.join(ROOT, "app", "dist", "prawko", "browser")
 RESOURCES = os.path.join(ROOT, "resources")
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    # explicit types - on Windows mimetypes reads the registry, which may map e.g. .js to text/plain
     extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map,
-                      ".mp4": "video/mp4", ".webm": "video/webm", ".json": "application/json",
-                      ".js": "text/javascript"}
+                      ".html": "text/html", ".css": "text/css", ".js": "text/javascript",
+                      ".json": "application/json", ".mp4": "video/mp4", ".webm": "video/webm",
+                      ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIST, **kwargs)
@@ -86,11 +96,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-if __name__ == "__main__":
+def create_server(port, explicit):
+    """Binds the given port; without an explicit port, tries the next ones if it is taken."""
+    for p in [port] if explicit else range(port, port + 20):
+        try:
+            return http.server.ThreadingHTTPServer(("127.0.0.1", p), Handler), p
+        except OSError:
+            continue
+    sys.exit(f"Port {port} is already in use")
+
+
+def main():
     if not os.path.isfile(os.path.join(DIST, "index.html")):
         print("WARNING: app is not built (cd app && npm install && npm run build) - serving only the resources/ directory")
-    port = next((int(a) for a in sys.argv[1:] if a.isdigit()), 8000)
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    ports = [int(a) for a in sys.argv[1:] if a.isdigit()]
+    server, port = create_server(ports[0] if ports else 8000, bool(ports))
     url = f"http://localhost:{port}/"
     print(f"App available at {url}  (Ctrl+C to stop)")
     if "--no-browser" not in sys.argv:
@@ -99,3 +119,14 @@ if __name__ == "__main__":
         server.serve_forever()
     except KeyboardInterrupt:
         pass
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except BaseException as e:
+        # keep the console window of a double-clicked executable open, so the error can be read
+        if getattr(sys, "frozen", False) and not isinstance(e, KeyboardInterrupt):
+            print(e)
+            input("Press Enter to exit...")
+        raise
