@@ -1,0 +1,62 @@
+@let q = current();
+<main class="exam">
+  <div class="exam-top">
+    <div class="box"><small>{{ i18n.t('points') }}</small><b>{{ q.points }}</b></div>
+    <div class="box">
+      <small>{{ i18n.t('scopeLabel') }}</small>
+      <b>{{ (q.scope === 'basic' ? i18n.t('basic') : i18n.t('specialist')).toUpperCase() }}</b>
+    </div>
+    <div class="box"><small>{{ i18n.t('basicCount') }}</small><b>{{ counts().basic }}</b></div>
+    <div class="box"><small>{{ i18n.t('specCount') }}</small><b>{{ counts().specialist }}</b></div>
+    <div class="box"><small>{{ i18n.t('timeLeft') }}</small><b>{{ formatTime(timeLeft()) }}</b></div>
+    <button class="btn danger" (click)="confirmFinish()">{{ i18n.t('finishExam') }}</button>
+  </div>
+
+  <div class="exam-body">
+    <div class="exam-left">
+      @for (mq of [q]; track mq.id) {
+        <app-question-media
+          class="exam-media"
+          [question]="mq"
+          [startMode]="mq.scope === 'basic' ? 'button' : 'auto'"
+          [externalStart]="true"
+          (startRequested)="beginAnswerPhase()"
+          (ended)="onMediaEnded()"
+        />
+      }
+      <h2 class="q-text">{{ i18n.tr(q.text) }}</h2>
+      <div class="answers" [class]="q.type">
+        @for (o of i18n.answerOptions(q); track o.key) {
+          <button class="answer" [class.selected]="selected() === o.key" (click)="choose(o.key)">
+            {{ o.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="exam-right card">
+      <div class="phase-label">{{ phaseLabel() }}</div>
+      <div class="timer">
+        <div
+          [style.width.%]="phasePct()"
+          [class.low]="(phaseLeft() ?? 99) < 5"
+          [class.video]="phaseLeft() === null"
+        ></div>
+      </div>
+      <div class="timer-text">
+        @let left = phaseLeft();
+        @if (left !== null) {
+          {{ ceil(left) }} {{ i18n.t('sec') }}
+        } @else {
+          ▶
+        }
+      </div>
+      @if (phase() === 'read') {
+        <div class="start-box">
+          <button class="btn-start" (click)="beginAnswerPhase()">{{ i18n.t('start') }}</button>
+        </div>
+      }
+      <button class="btn primary big" id="x-next" (click)="next()">{{ i18n.t('nextQuestion') }}</button>
+    </div>
+  </div>
+</main>

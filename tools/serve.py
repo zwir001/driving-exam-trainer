@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Lokalny serwer aplikacji z obsługą żądań HTTP Range (wymagane do przewijania filmów).
+"""Local server for the built Angular app with HTTP Range request support (video seeking).
 
-Użycie:  python tools/serve.py [port]   ->  http://localhost:8000
+Serves app/dist/prawko/browser (output of `npm run build` in app/) and the resources/ directory
+under /resources/. Unknown paths return index.html (app routing).
+
+Usage:  python tools/serve.py [port] [--no-browser]   ->  http://localhost:8000
 """
 import http.server
 import os
@@ -10,6 +13,8 @@ import sys
 import webbrowser
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DIST = os.path.join(ROOT, "app", "dist", "prawko", "browser")
+RESOURCES = os.path.join(ROOT, "resources")
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -18,10 +23,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                       ".js": "text/javascript"}
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=ROOT, **kwargs)
+        super().__init__(*args, directory=DIST, **kwargs)
+
+    def translate_path(self, path):
+        clean = path.split("?", 1)[0].split("#", 1)[0]
+        if clean.startswith("/resources/"):
+            self.directory = os.path.dirname(RESOURCES)
+            return super().translate_path(path)
+        self.directory = DIST
+        local = super().translate_path(path)
+        if not os.path.exists(local):
+            return os.path.join(DIST, "index.html")  # app routes, e.g. /learn
+        return local
 
     def send_head(self):
-        self._remaining = None  # połączenie keep-alive obsługuje wiele żądań
+        self._remaining = None  # a keep-alive connection handles many requests
         rng = self.headers.get("Range")
         path = self.translate_path(self.path)
         if not rng or not os.path.isfile(path):
@@ -30,7 +46,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         size = os.path.getsize(path)
         start = int(m.group(1)) if m and m.group(1) else 0
         end = int(m.group(2)) if m and m.group(2) else size - 1
-        if m and not m.group(1) and m.group(2):  # bytes=-N (ostatnie N bajtów)
+        if m and not m.group(1) and m.group(2):  # bytes=-N (last N bytes)
             start, end = max(0, size - int(m.group(2))), size - 1
         end = min(end, size - 1)
         if start > end:
@@ -59,7 +75,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 outputfile.write(chunk)
                 remaining -= len(chunk)
         except (BrokenPipeError, ConnectionResetError):
-            pass  # przeglądarka przerwała pobieranie (np. przewinięcie filmu)
+            pass  # browser aborted the download (e.g. video seek)
 
     def end_headers(self):
         if getattr(self, "_remaining", None) is None:
@@ -71,10 +87,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    if not os.path.isfile(os.path.join(DIST, "index.html")):
+        print("WARNING: app is not built (cd app && npm install && npm run build) - serving only the resources/ directory")
     port = next((int(a) for a in sys.argv[1:] if a.isdigit()), 8000)
     server = http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler)
     url = f"http://localhost:{port}/"
-    print(f"Aplikacja dostępna pod adresem {url}  (Ctrl+C aby zakończyć)")
+    print(f"App available at {url}  (Ctrl+C to stop)")
     if "--no-browser" not in sys.argv:
         webbrowser.open(url)
     try:

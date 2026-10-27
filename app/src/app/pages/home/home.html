@@ -1,0 +1,56 @@
+@let s = stats();
+<main class="home">
+  @if (bankService.banks().length > 1) {
+    <label class="bank-select">
+      {{ i18n.t('bank') }}:
+      <select (change)="selectBank($any($event.target).value)">
+        @for (b of bankService.banks(); track b.id) {
+          <option [value]="b.id" [selected]="b.id === bankService.bank()?.id">{{ i18n.tr(b.name) }}</option>
+        }
+      </select>
+    </label>
+  }
+  <h1>
+    {{ i18n.tr(bankService.bank()?.name) }}
+    <span class="muted">· {{ s.total }} {{ i18n.t('questions') }}</span>
+  </h1>
+  <div class="cards">
+    <section class="card">
+      <h2>📘 {{ i18n.t('learn') }}</h2>
+      <p>{{ i18n.t('learnDesc') }}</p>
+      <div class="progress-bar">
+        <div class="good" [style.width.%]="s.goodPct"></div>
+        <div class="bad" [style.width.%]="s.badPct"></div>
+      </div>
+      <ul class="stats">
+        <li><b>{{ s.seen }}</b> / {{ s.total }} {{ i18n.t('seen') }}</li>
+        <li class="good-t"><b>{{ s.good }}</b> {{ i18n.t('mastered') }}</li>
+        <li class="bad-t"><b>{{ s.bad }}</b> {{ i18n.t('toReview') }}</li>
+      </ul>
+      <div class="row">
+        <a class="btn primary" routerLink="/learn">{{ i18n.t('startLearning') }}</a>
+        <button class="btn ghost" (click)="resetProgress()">{{ i18n.t('resetProgress') }}</button>
+      </div>
+    </section>
+    <section class="card" id="exam-card">
+      <h2>📝 {{ i18n.t('exam') }}</h2>
+      <p>{{ i18n.t('examDesc') }}</p>
+      <ul class="rules">
+        <li>{{ i18n.t('examIntro') }}</li>
+        <li>{{ i18n.t('examRulesBasic') }}</li>
+        <li>{{ i18n.t('examRulesSpec') }}</li>
+      </ul>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="exam.excludeMissing()"
+          (change)="exam.setExcludeMissing($any($event.target).checked)"
+        />
+        {{ i18n.t('excludeMissing') }}
+      </label>
+      <div class="row">
+        <button class="btn primary" id="go-exam" (click)="startExam()">{{ i18n.t('startExam') }}</button>
+      </div>
+    </section>
+  </div>
+</main>

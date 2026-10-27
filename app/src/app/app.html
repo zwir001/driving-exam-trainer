@@ -1,0 +1,34 @@
+<header class="app-header">
+  @if (inExam()) {
+    <div class="brand">🏍️ {{ i18n.t('appTitle') }}</div>
+  } @else {
+    <a class="brand" routerLink="/">🏍️ {{ i18n.t('appTitle') }}</a>
+  }
+  <nav>
+    @if (!inExam()) {
+      <a class="link" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        {{ i18n.t('home') }}
+      </a>
+      <a class="link" routerLink="/learn" routerLinkActive="active">{{ i18n.t('learn') }}</a>
+      <a class="link" routerLink="/" fragment="exam-card">{{ i18n.t('exam') }}</a>
+    }
+    <select [attr.aria-label]="i18n.t('language')" (change)="setLang($any($event.target).value)">
+      @for (l of i18n.languages; track l.code) {
+        <option [value]="l.code" [selected]="l.code === i18n.lang()">{{ l.label }}</option>
+      }
+    </select>
+  </nav>
+</header>
+
+<div class="app-content">
+  @if (bank.error(); as error) {
+    <div class="card error">
+      {{ i18n.t('loadError') }}<br />
+      <small>{{ error }}</small>
+    </div>
+  } @else if (bank.bank()) {
+    <router-outlet />
+  } @else {
+    <div class="loading">…</div>
+  }
+</div>

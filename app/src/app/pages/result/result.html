@@ -1,0 +1,46 @@
+@let s = session();
+<main class="result">
+  <section class="card result-head" [class.pass]="passed()" [class.fail]="!passed()">
+    <h1>{{ i18n.t('result') }}: {{ passed() ? i18n.t('passed') : i18n.t('failed') }}</h1>
+    <div class="score"><b>{{ s.score }}</b> / {{ s.maxScore }}</div>
+    <p>
+      {{ i18n.t('scoreLabel') }} · {{ i18n.t('correctCount') }}: {{ correctCount() }} / {{ s.questions.length }}
+    </p>
+    <div class="row">
+      <button class="btn primary" (click)="newExam()">{{ i18n.t('newExam') }}</button>
+      <a class="btn" routerLink="/">{{ i18n.t('backHome') }}</a>
+    </div>
+  </section>
+
+  <h2>{{ i18n.t('review') }}</h2>
+  <div class="review">
+    @for (item of items(); track $index; let i = $index) {
+      <details
+        class="card review-item"
+        [class.ok]="item.ok"
+        [class.bad]="!item.ok"
+        (toggle)="toggle(i, $any($event.target).open)"
+      >
+        <summary>
+          <span class="num">{{ i + 1 }}.</span>
+          <span class="mark">{{ item.ok ? '✔' : '✘' }}</span>
+          <span class="txt">{{ i18n.tr(item.q.text) }}</span>
+          <span class="pts">{{ item.ok ? item.q.points : 0 }}/{{ item.q.points }}</span>
+        </summary>
+        @if (opened().has(i)) {
+          <app-question-media class="small-media" [question]="item.q" [controls]="true" />
+        }
+        <p>
+          {{ i18n.t('yourAnswer') }}:
+          <b [class.good-t]="item.ok" [class.bad-t]="!item.ok">{{ i18n.answerLabel(item.q, item.answer) }}</b>
+        </p>
+        @if (!item.ok) {
+          <p>
+            {{ i18n.t('correctAnswer') }}: <b class="good-t">{{ i18n.answerLabel(item.q, item.q.correct) }}</b>
+          </p>
+        }
+        <p class="muted small">#{{ item.q.id }} · {{ i18n.t('block') }} {{ item.q.block }}</p>
+      </details>
+    }
+  </div>
+</main>
