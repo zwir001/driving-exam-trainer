@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "prawko": {
+    "driving-exam-trainer": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:class": {
@@ -81,10 +81,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "prawko:build:production"
+              "buildTarget": "driving-exam-trainer:build:production"
             },
             "development": {
-              "buildTarget": "prawko:build:development"
+              "buildTarget": "driving-exam-trainer:build:development"
             }
           },
           "defaultConfiguration": "development",

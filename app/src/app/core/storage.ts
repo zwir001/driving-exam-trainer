@@ -1,4 +1,4 @@
-const PREFIX = 'prawko.';
+const PREFIX = 'driving-exam-trainer.';
 
 export function loadSetting<T>(key: string, fallback: T): T {
   try {

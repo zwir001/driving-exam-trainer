@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Local server for the built Angular app with HTTP Range request support (video seeking).
 
-Serves app/dist/prawko/browser (output of `npm run build` in app/) and the resources/ directory
+Serves app/dist/driving-exam-trainer/browser (output of `npm run build` in app/) and the resources/ directory
 under /resources/. Unknown paths return index.html (app routing).
 
 Usage:  python tools/serve.py [port] [--no-browser]   ->  http://localhost:8000
@@ -21,7 +21,7 @@ if getattr(sys, "frozen", False):
     DIST = os.path.join(ROOT, "app")
 else:
     ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DIST = os.path.join(ROOT, "app", "dist", "prawko", "browser")
+    DIST = os.path.join(ROOT, "app", "dist", "driving-exam-trainer", "browser")
 RESOURCES = os.path.join(ROOT, "resources")
 
 
