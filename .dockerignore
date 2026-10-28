@@ -1,0 +1,8 @@
+.git
+.github
+.idea
+**/__pycache__
+app/node_modules
+app/dist
+app/.angular
+*.xlsx
